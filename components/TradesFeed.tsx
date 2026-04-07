@@ -2,54 +2,50 @@
 
 import { useEffect, useState } from "react";
 
-interface Trade {
-  price: number;
-  qty: number;
-  side: "buy" | "sell";
-  time: number;
-}
-
 export default function TradesFeed({ symbol }: { symbol: string }) {
-  const [trades, setTrades] = useState<Trade[]>([]);
+  const [trades, setTrades] = useState<any[]>([]);
 
   useEffect(() => {
-    const ws = new WebSocket(
-      `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@trade`
-    );
+    let ws: WebSocket;
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+    function connect() {
+      ws = new WebSocket(
+        `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@trade`
+      );
 
-      const trade: Trade = {
-        price: parseFloat(data.p),
-        qty: parseFloat(data.q),
-        side: data.m ? "sell" : "buy", // Binance: m=true means buyer is market maker → SELL
-        time: data.T,
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        setTrades((prev) => {
+          const updated = [data, ...prev];
+          return updated.slice(0, 40); // keep last 40 trades
+        });
       };
 
-      setTrades((prev) => {
-        const updated = [trade, ...prev];
-        return updated.slice(0, 50); // keep last 50
-      });
-    };
+      ws.onclose = () => {
+        setTimeout(connect, 1000); // auto reconnect
+      };
+    }
 
-    return () => ws.close();
+    connect();
+
+    return () => ws && ws.close();
   }, [symbol]);
 
   return (
-    <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-      <h2 className="text-xl font-bold mb-3">Recent Trades</h2>
+    <div className="bg-gray-900 p-4 rounded border border-gray-700">
+      <h2 className="text-xl font-semibold mb-2">Recent Trades</h2>
 
-      <div className="flex flex-col gap-1 max-h-80 overflow-y-auto">
+      <div className="max-h-64 overflow-auto text-sm space-y-1">
         {trades.map((t, i) => (
           <div
             key={i}
-            className="flex justify-between text-sm"
+            className={`flex justify-between ${
+              t.m ? "text-red-400" : "text-green-400"
+            }`}
           >
-            <span className={t.side === "buy" ? "text-green-400" : "text-red-400"}>
-              {t.price.toFixed(2)}
-            </span>
-            <span>{t.qty.toFixed(4)}</span>
+            <span>{parseFloat(t.p).toFixed(2)}</span>
+            <span>{parseFloat(t.q).toFixed(4)}</span>
           </div>
         ))}
       </div>
