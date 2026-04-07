@@ -107,13 +107,42 @@ export default function PriceChart({
       }
     }
 
-    // Load immediately
+    // Load historical candles once
     load();
 
-    // Auto-refresh every 10 seconds
-    const interval = setInterval(load, 10000);
+    // --- WebSocket for live candles ---
+    const ws = new WebSocket(
+      `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${timeframe}`
+    );
 
-    return () => clearInterval(interval);
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      const k = data.k; // kline data
+
+      const liveCandle = {
+        time: Math.floor(k.t / 1000),
+        open: parseFloat(k.o),
+        high: parseFloat(k.h),
+        low: parseFloat(k.l),
+        close: parseFloat(k.c),
+        volume: parseFloat(k.v),
+      };
+
+      // Update the current candle
+      if (candleSeries.current) {
+        candleSeries.current.update(liveCandle);
+      }
+
+      // Update volume live
+      if (volumeSeries.current) {
+        volumeSeries.current.update({
+          time: liveCandle.time,
+          value: liveCandle.volume,
+        });
+      }
+    };
+
+    return () => ws.close();
   }, [symbol, timeframe]);
 
   return (
