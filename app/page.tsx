@@ -3,6 +3,7 @@
 import { useState } from "react";
 import ChartWithIndicators from "@/components/ChartWithIndicators";
 import Orderbook from "@/components/Orderbook";
+import TradesFeed from "@/components/TradesFeed";
 
 export default function Home() {
   const [symbol, setSymbol] = useState("BTCUSDT");
@@ -49,6 +50,9 @@ export default function Home() {
 
         {/* Orderbook */}
         <Orderbook symbol={symbol} />
+
+        {/* Trades Feed */}
+        <TradesFeed symbol={symbol} />
       </div>
     </main>
   );
