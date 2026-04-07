@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   createChart,
   IChartApi,
@@ -25,6 +25,9 @@ export default function PriceChart({
   const emaSeries = useRef<ISeriesApi<"Line"> | null>(null);
   const volumeSeries = useRef<ISeriesApi<"Histogram"> | null>(null);
 
+  // Store candles in state so indicators can update live
+  const [candles, setCandles] = useState<any[]>([]);
+
   useEffect(() => {
     if (!chartRef.current) return;
 
@@ -40,11 +43,9 @@ export default function PriceChart({
         height: 400,
       });
 
-      // Candles
       candleSeries.current =
         chartInstance.current.addCandlestickSeries();
 
-      // Volume histogram
       volumeSeries.current = chartInstance.current.addHistogramSeries({
         priceFormat: { type: "volume" },
         priceScaleId: "",
@@ -64,50 +65,37 @@ export default function PriceChart({
           bottom: 0.25,
         },
       });
+
+      smaSeries.current = chartInstance.current.addLineSeries({
+        color: "#00bcd4",
+        lineWidth: 2,
+      });
+
+      emaSeries.current = chartInstance.current.addLineSeries({
+        color: "#ff9800",
+        lineWidth: 2,
+      });
     }
 
     async function load() {
       const data = await fetchCandles(symbol, timeframe);
 
-      if (data?.candles && candleSeries.current) {
-        // Candles
-        candleSeries.current.setData(data.candles);
+      if (data?.candles) {
+        setCandles(data.candles);
 
-        // Volume
-        if (volumeSeries.current) {
-          const volumeData = data.candles.map((c: any) => ({
-            time: c.time,
-            value: c.volume,
-          }));
+        candleSeries.current?.setData(data.candles);
 
-          volumeSeries.current.setData(volumeData);
-        }
+        const volumeData = data.candles.map((c: any) => ({
+          time: c.time,
+          value: c.volume,
+        }));
+        volumeSeries.current?.setData(volumeData);
 
-        // Indicators
-        const sma20 = calculateSMA(data.candles, 20);
-        const ema50 = calculateEMA(data.candles, 50);
-
-        // SMA
-        if (!smaSeries.current) {
-          smaSeries.current = chartInstance.current.addLineSeries({
-            color: "#00bcd4",
-            lineWidth: 2,
-          });
-        }
-        smaSeries.current.setData(sma20);
-
-        // EMA
-        if (!emaSeries.current) {
-          emaSeries.current = chartInstance.current.addLineSeries({
-            color: "#ff9800",
-            lineWidth: 2,
-          });
-        }
-        emaSeries.current.setData(ema50);
+        smaSeries.current?.setData(calculateSMA(data.candles, 20));
+        emaSeries.current?.setData(calculateEMA(data.candles, 50));
       }
     }
 
-    // Load historical candles once
     load();
 
     // --- WebSocket for live candles ---
@@ -117,7 +105,7 @@ export default function PriceChart({
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      const k = data.k; // kline data
+      const k = data.k;
 
       const liveCandle = {
         time: Math.floor(k.t / 1000),
@@ -128,21 +116,34 @@ export default function PriceChart({
         volume: parseFloat(k.v),
       };
 
-      // If candle is still forming → update it
-      if (!k.x) {
+      setCandles((prev) => {
+        const updated = [...prev];
+        const lastIndex = updated.length - 1;
+
+        if (!k.x) {
+          // Candle still forming → update last candle
+          updated[lastIndex] = liveCandle;
+        } else {
+          // Candle closed → append new candle
+          updated[lastIndex] = liveCandle;
+          updated.push(liveCandle);
+        }
+
+        // Update chart candles
         candleSeries.current?.update(liveCandle);
+
+        // Update volume
         volumeSeries.current?.update({
           time: liveCandle.time,
           value: liveCandle.volume,
         });
-      } else {
-        // Candle closed → append new candle
-        candleSeries.current?.update(liveCandle);
-        volumeSeries.current?.update({
-          time: liveCandle.time,
-          value: liveCandle.volume,
-        });
-      }
+
+        // Recalculate indicators live
+        smaSeries.current?.setData(calculateSMA(updated, 20));
+        emaSeries.current?.setData(calculateEMA(updated, 50));
+
+        return updated;
+      });
     };
 
     return () => ws.close();
@@ -154,4 +155,4 @@ export default function PriceChart({
       className="w-full h-[400px] rounded-lg overflow-hidden"
     />
   );
-          }
+            }
