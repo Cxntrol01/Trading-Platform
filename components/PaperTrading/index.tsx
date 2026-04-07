@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Position, Trade, Order } from "./types";
+import { Position, Trade, Order, PriceAlert } from "./types";
 import OrderEntry from "./ui/OrderEntry";
 import OrdersPanel from "./ui/OrdersPanel";
+import AlertEntry from "./ui/AlertEntry";
+import AlertsPanel from "./ui/AlertsPanel";
 import { createOrder, processOrdersOnPrice } from "./orders";
+import { createAlert, checkAlerts } from "./alerts";
 
 export default function PaperTrading({ symbol }: { symbol: string }) {
   const [price, setPrice] = useState(0);
@@ -19,6 +22,10 @@ export default function PaperTrading({ symbol }: { symbol: string }) {
   const [positions, setPositions] = useState<Position[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [history, setHistory] = useState<Trade[]>([]);
+
+  // Alerts
+  const [alerts, setAlerts] = useState<PriceAlert[]>([]);
+  const [triggeredAlerts, setTriggeredAlerts] = useState<PriceAlert[]>([]);
 
   // Load balance from localStorage
   useEffect(() => {
@@ -49,7 +56,7 @@ export default function PaperTrading({ symbol }: { symbol: string }) {
     return () => ws.close();
   }, [symbol]);
 
-  // Auto SL/TP + Order Execution
+  // Auto SL/TP + Order Execution + Alerts
   useEffect(() => {
     if (price === 0) return;
 
@@ -137,7 +144,41 @@ export default function PaperTrading({ symbol }: { symbol: string }) {
 
       return remaining;
     });
+
+    // 3. Price Alerts
+    const alertResult = checkAlerts({ price, alerts });
+
+    if (alertResult.triggeredAlerts.length > 0) {
+      setTriggeredAlerts((prev) => [
+        ...alertResult.triggeredAlerts,
+        ...prev,
+      ]);
+
+      // Optional: play a sound
+      try {
+        const audio = new Audio("/alert.mp3");
+        audio.play().catch(() => {});
+      } catch {}
+
+      // Optional: flash the screen
+      flashScreen();
+    }
+
+    setAlerts(alertResult.remainingAlerts);
   }, [price]);
+
+  // Flash screen on alert
+  const flashScreen = () => {
+    if (typeof document === "undefined") return;
+    const el = document.createElement("div");
+    el.style.position = "fixed";
+    el.style.inset = "0";
+    el.style.background = "rgba(255,0,0,0.2)";
+    el.style.zIndex = "9999";
+    el.style.pointerEvents = "none";
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 150);
+  };
 
   const unrealizedPnlTotal = positions.reduce((acc, pos) => {
     const pnl =
@@ -165,7 +206,9 @@ export default function PaperTrading({ symbol }: { symbol: string }) {
     setRealizedPnl(0);
     setPositions([]);
     setOrders([]);
+    setAlerts([]);
     setHistory([]);
+    setTriggeredAlerts([]);
     setBalanceInput("10000");
     setShowBalanceModal(true);
   };
@@ -179,6 +222,17 @@ export default function PaperTrading({ symbol }: { symbol: string }) {
   // Cancel order
   const cancelOrder = (id: number) => {
     setOrders((prev) => prev.filter((o) => o.id !== id));
+  };
+
+  // Add alert
+  const handleAlertSubmit = (params: any) => {
+    const alert = createAlert(params);
+    setAlerts((prev) => [alert, ...prev]);
+  };
+
+  // Delete alert
+  const deleteAlert = (id: number) => {
+    setAlerts((prev) => prev.filter((a) => a.id !== id));
   };
 
   return (
@@ -251,6 +305,10 @@ export default function PaperTrading({ symbol }: { symbol: string }) {
 
       {/* Order Entry */}
       <OrderEntry price={price} onSubmit={handleOrderSubmit} />
+
+      {/* Alerts */}
+      <AlertEntry onSubmit={handleAlertSubmit} />
+      <AlertsPanel alerts={alerts} onDelete={deleteAlert} />
 
       {/* Open Orders */}
       <OrdersPanel orders={orders} onCancel={cancelOrder} />
@@ -352,4 +410,4 @@ export default function PaperTrading({ symbol }: { symbol: string }) {
       </div>
     </div>
   );
-        }
+              }
