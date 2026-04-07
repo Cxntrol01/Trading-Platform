@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { createChart, IChartApi, ISeriesApi } from "lightweight-charts";
+import {
+  createChart,
+  IChartApi,
+  ISeriesApi,
+} from "lightweight-charts";
+
 import { fetchCandles } from "@/lib/fetchCandles";
+import { calculateSMA, calculateEMA } from "@/lib/indicators";
 
 export default function PriceChart({
   symbol,
@@ -13,7 +19,10 @@ export default function PriceChart({
 }) {
   const chartRef = useRef<HTMLDivElement | null>(null);
   const chartInstance = useRef<IChartApi | null>(null);
+
   const candleSeries = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const smaSeries = useRef<ISeriesApi<"Line"> | null>(null);
+  const emaSeries = useRef<ISeriesApi<"Line"> | null>(null);
 
   useEffect(() => {
     if (!chartRef.current) return;
@@ -22,7 +31,10 @@ export default function PriceChart({
     if (!chartInstance.current) {
       chartInstance.current = createChart(chartRef.current, {
         layout: { background: { color: "#000" }, textColor: "#fff" },
-        grid: { vertLines: { color: "#222" }, horzLines: { color: "#222" } },
+        grid: {
+          vertLines: { color: "#222" },
+          horzLines: { color: "#222" },
+        },
         width: chartRef.current.clientWidth,
         height: 400,
       });
@@ -35,7 +47,30 @@ export default function PriceChart({
       const data = await fetchCandles(symbol, timeframe);
 
       if (data?.candles && candleSeries.current) {
+        // Set candle data
         candleSeries.current.setData(data.candles);
+
+        // --- Indicators ---
+        const sma20 = calculateSMA(data.candles, 20);
+        const ema50 = calculateEMA(data.candles, 50);
+
+        // SMA line
+        if (!smaSeries.current) {
+          smaSeries.current = chartInstance.current.addLineSeries({
+            color: "#00bcd4",
+            lineWidth: 2,
+          });
+        }
+        smaSeries.current.setData(sma20);
+
+        // EMA line
+        if (!emaSeries.current) {
+          emaSeries.current = chartInstance.current.addLineSeries({
+            color: "#ff9800",
+            lineWidth: 2,
+          });
+        }
+        emaSeries.current.setData(ema50);
       }
     }
 
