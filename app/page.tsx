@@ -6,6 +6,7 @@ import Orderbook from "@/components/Orderbook";
 import TradesFeed from "@/components/TradesFeed";
 import PriceTicker from "@/components/PriceTicker";
 import DepthChart from "@/components/DepthChart";
+import MultiChart from "@/components/MultiChart";
 
 export default function Home() {
   const [symbol, setSymbol] = useState("BTCUSDT");
@@ -50,8 +51,11 @@ export default function Home() {
           </select>
         </div>
 
-        {/* Chart + RSI */}
+        {/* Main Chart */}
         <ChartWithIndicators symbol={symbol} timeframe={timeframe} />
+
+        {/* Multi‑Chart View */}
+        <MultiChart symbol={symbol} />
 
         {/* Orderbook */}
         <Orderbook symbol={symbol} />
