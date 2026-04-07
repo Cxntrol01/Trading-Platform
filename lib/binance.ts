@@ -10,5 +10,6 @@ export async function fetchBinanceCandles(symbol: string, interval: string) {
     high: parseFloat(candle[2]),
     low: parseFloat(candle[3]),
     close: parseFloat(candle[4]),
+    volume: parseFloat(candle[5]), // 👈 add volume
   }));
 }
