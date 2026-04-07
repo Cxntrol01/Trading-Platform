@@ -1,94 +1,56 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { createChart, ISeriesApi } from "lightweight-charts";
-
-interface Order {
-  price: number;
-  qty: number;
-}
+import { useEffect, useState } from "react";
 
 export default function DepthChart({ symbol }: { symbol: string }) {
-  const chartRef = useRef<HTMLDivElement | null>(null);
-  const chart = useRef<any>(null);
-  const bidsSeries = useRef<ISeriesApi<"Area"> | null>(null);
-  const asksSeries = useRef<ISeriesApi<"Area"> | null>(null);
-
-  const [bids, setBids] = useState<Order[]>([]);
-  const [asks, setAsks] = useState<Order[]>([]);
+  const [bids, setBids] = useState<any[]>([]);
+  const [asks, setAsks] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!chartRef.current) return;
+    let ws: WebSocket;
 
-    chart.current = createChart(chartRef.current, {
-      layout: { background: { color: "#000" }, textColor: "#fff" },
-      grid: {
-        vertLines: { color: "#222" },
-        horzLines: { color: "#222" },
-      },
-      width: chartRef.current.clientWidth,
-      height: 300,
-    });
+    function connect() {
+      ws = new WebSocket(
+        `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth20@100ms`
+      );
 
-    bidsSeries.current = chart.current.addAreaSeries({
-      lineColor: "#00ff99",
-      topColor: "rgba(0,255,153,0.4)",
-      bottomColor: "rgba(0,255,153,0.0)",
-    });
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
 
-    asksSeries.current = chart.current.addAreaSeries({
-      lineColor: "#ff0066",
-      topColor: "rgba(255,0,102,0.4)",
-      bottomColor: "rgba(255,0,102,0.0)",
-    });
+        if (data.b) setBids(data.b);
+        if (data.a) setAsks(data.a);
+      };
 
-    // WebSocket for orderbook depth
-    const ws = new WebSocket(
-      `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth20@100ms`
-    );
+      ws.onclose = () => {
+        setTimeout(connect, 1000); // auto reconnect
+      };
+    }
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+    connect();
 
-      const newBids = data.bids.map((b: any) => ({
-        price: parseFloat(b[0]),
-        qty: parseFloat(b[1]),
-      }));
-
-      const newAsks = data.asks.map((a: any) => ({
-        price: parseFloat(a[0]),
-        qty: parseFloat(a[1]),
-      }));
-
-      // Convert to cumulative depth
-      const cumulativeBids = [];
-      let totalBid = 0;
-      for (const b of newBids) {
-        totalBid += b.qty;
-        cumulativeBids.push({ time: b.price, value: totalBid });
-      }
-
-      const cumulativeAsks = [];
-      let totalAsk = 0;
-      for (const a of newAsks) {
-        totalAsk += a.qty;
-        cumulativeAsks.push({ time: a.price, value: totalAsk });
-      }
-
-      bidsSeries.current?.setData(cumulativeBids);
-      asksSeries.current?.setData(cumulativeAsks);
-
-      setBids(newBids);
-      setAsks(newAsks);
-    };
-
-    return () => ws.close();
+    return () => ws && ws.close();
   }, [symbol]);
 
+  const totalBid = bids.reduce((sum, b) => sum + parseFloat(b[1]), 0);
+  const totalAsk = asks.reduce((sum, a) => sum + parseFloat(a[1]), 0);
+
   return (
-    <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-      <h2 className="text-xl font-bold mb-3">Depth Chart</h2>
-      <div ref={chartRef} className="w-full h-[300px]" />
+    <div className="bg-gray-900 p-4 rounded border border-gray-700">
+      <h2 className="text-xl font-semibold mb-2">Depth Chart</h2>
+
+      <div className="flex gap-4 text-sm">
+        <div className="flex-1">
+          <h3 className="text-green-400 font-semibold mb-1">Bid Volume</h3>
+          <div className="bg-green-600 h-4 rounded" style={{ width: `${(totalBid / (totalBid + totalAsk)) * 100}%` }} />
+          <p className="mt-1 text-gray-400">{totalBid.toFixed(4)}</p>
+        </div>
+
+        <div className="flex-1">
+          <h3 className="text-red-400 font-semibold mb-1">Ask Volume</h3>
+          <div className="bg-red-600 h-4 rounded" style={{ width: `${(totalAsk / (totalBid + totalAsk)) * 100}%` }} />
+          <p className="mt-1 text-gray-400">{totalAsk.toFixed(4)}</p>
+        </div>
+      </div>
     </div>
   );
 }
