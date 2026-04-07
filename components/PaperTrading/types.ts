@@ -1,4 +1,6 @@
-// Shared types for the Paper Trading system (Layer 2)
+// Shared types for the Paper Trading system (Layer 2 + Alerts)
+
+// --- Core Trading Types ------------------------------------------------------
 
 export type Direction = "LONG" | "SHORT";
 
@@ -31,6 +33,8 @@ export interface Position {
   takeProfit?: number;
 }
 
+// --- Order Model -------------------------------------------------------------
+
 export interface Order {
   id: number;
   side: OrderSide;
@@ -60,4 +64,15 @@ export interface OrderFillResult {
   pnl?: number;
   closedPositions?: Position[];
   openedPositions?: Position[];
+}
+
+// --- Price Alerts (Layer 3) --------------------------------------------------
+
+export interface PriceAlert {
+  id: number;
+  price: number;
+  direction: "ABOVE" | "BELOW";
+  persistent: boolean;
+  triggered: boolean;
+  timestamp: number;
 }
