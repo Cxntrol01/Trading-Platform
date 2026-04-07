@@ -224,12 +224,10 @@ export default function PaperTrading({ symbol }: { symbol: string }) {
   };
 
   const handleMarketBuy = () => {
-    // Buy opens LONG
     openPosition("LONG", "BUY");
   };
 
   const handleMarketSell = () => {
-    // Sell opens SHORT
     openPosition("SHORT", "SELL");
   };
 
@@ -525,4 +523,4 @@ export default function PaperTrading({ symbol }: { symbol: string }) {
       </div>
     </div>
   );
-    }
+}
