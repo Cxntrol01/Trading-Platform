@@ -2,53 +2,48 @@
 
 import { useEffect, useState } from "react";
 
-interface OrderLevel {
-  price: number;
-  amount: number;
-}
-
 export default function Orderbook({ symbol }: { symbol: string }) {
-  const [bids, setBids] = useState<OrderLevel[]>([]);
-  const [asks, setAsks] = useState<OrderLevel[]>([]);
+  const [bids, setBids] = useState<any[]>([]);
+  const [asks, setAsks] = useState<any[]>([]);
 
   useEffect(() => {
-    const ws = new WebSocket(
-      `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth20`
-    );
+    let ws: WebSocket;
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+    function connect() {
+      ws = new WebSocket(
+        `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth20@100ms`
+      );
 
-      const newBids = data.bids.map((b: any) => ({
-        price: parseFloat(b[0]),
-        amount: parseFloat(b[1]),
-      }));
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
 
-      const newAsks = data.asks.map((a: any) => ({
-        price: parseFloat(a[0]),
-        amount: parseFloat(a[1]),
-      }));
+        if (data.b) setBids(data.b);
+        if (data.a) setAsks(data.a);
+      };
 
-      setBids(newBids);
-      setAsks(newAsks);
-    };
+      ws.onclose = () => {
+        setTimeout(connect, 1000); // auto reconnect
+      };
+    }
 
-    return () => ws.close();
+    connect();
+
+    return () => ws && ws.close();
   }, [symbol]);
 
   return (
-    <div className="bg-gray-900 p-4 rounded-lg border border-gray-700">
-      <h2 className="text-xl font-bold mb-3">Orderbook</h2>
+    <div className="bg-gray-900 p-4 rounded border border-gray-700">
+      <h2 className="text-xl font-semibold mb-2">Orderbook</h2>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4 text-sm">
         {/* Bids */}
         <div>
-          <h3 className="text-green-400 font-semibold mb-2">Bids</h3>
-          <div className="flex flex-col gap-1">
+          <h3 className="text-green-400 font-semibold mb-1">Bids</h3>
+          <div className="space-y-1 max-h-64 overflow-auto">
             {bids.map((b, i) => (
-              <div key={i} className="flex justify-between text-sm">
-                <span className="text-green-400">{b.price.toFixed(2)}</span>
-                <span>{b.amount.toFixed(4)}</span>
+              <div key={i} className="flex justify-between">
+                <span>{parseFloat(b[0]).toFixed(2)}</span>
+                <span>{parseFloat(b[1]).toFixed(4)}</span>
               </div>
             ))}
           </div>
@@ -56,12 +51,12 @@ export default function Orderbook({ symbol }: { symbol: string }) {
 
         {/* Asks */}
         <div>
-          <h3 className="text-red-400 font-semibold mb-2">Asks</h3>
-          <div className="flex flex-col gap-1">
+          <h3 className="text-red-400 font-semibold mb-1">Asks</h3>
+          <div className="space-y-1 max-h-64 overflow-auto">
             {asks.map((a, i) => (
-              <div key={i} className="flex justify-between text-sm">
-                <span className="text-red-400">{a.price.toFixed(2)}</span>
-                <span>{a.amount.toFixed(4)}</span>
+              <div key={i} className="flex justify-between">
+                <span>{parseFloat(a[0]).toFixed(2)}</span>
+                <span>{parseFloat(a[1]).toFixed(4)}</span>
               </div>
             ))}
           </div>
@@ -69,4 +64,4 @@ export default function Orderbook({ symbol }: { symbol: string }) {
       </div>
     </div>
   );
-            }
+}
