@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import ChartWithIndicators from "@/components/ChartWithIndicators";
+import Orderbook from "@/components/Orderbook";
 
 export default function Home() {
   const [symbol, setSymbol] = useState("BTCUSDT");
@@ -45,6 +46,9 @@ export default function Home() {
 
         {/* Chart + RSI */}
         <ChartWithIndicators symbol={symbol} timeframe={timeframe} />
+
+        {/* Orderbook */}
+        <Orderbook symbol={symbol} />
       </div>
     </main>
   );
