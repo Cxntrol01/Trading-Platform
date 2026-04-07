@@ -5,6 +5,7 @@ import ChartWithIndicators from "@/components/ChartWithIndicators";
 import Orderbook from "@/components/Orderbook";
 import TradesFeed from "@/components/TradesFeed";
 import PriceTicker from "@/components/PriceTicker";
+import DepthChart from "@/components/DepthChart";
 
 export default function Home() {
   const [symbol, setSymbol] = useState("BTCUSDT");
@@ -57,6 +58,9 @@ export default function Home() {
 
         {/* Trades Feed */}
         <TradesFeed symbol={symbol} />
+
+        {/* Depth Chart */}
+        <DepthChart symbol={symbol} />
       </div>
     </main>
   );
