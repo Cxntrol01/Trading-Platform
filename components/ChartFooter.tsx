@@ -1,14 +1,46 @@
 "use client";
 
-export default function ChartFooter() {
+export default function ChartSettings({
+  onChange,
+}: {
+  onChange: (setting: string) => void;
+}) {
   return (
-    <div className="flex items-center justify-between px-3 py-2 bg-gray-900 rounded mt-2">
-      <div className="text-sm text-gray-400">Chart Footer</div>
+    <div className="flex gap-2 flex-wrap items-center">
+      <button
+        className="px-3 py-1 bg-gray-800 rounded"
+        onClick={() => onChange("candles")}
+      >
+        Candles
+      </button>
 
-      <div className="flex gap-2">
-        <button className="px-3 py-1 bg-gray-800 rounded">Indicators</button>
-        <button className="px-3 py-1 bg-gray-800 rounded">Volume</button>
-      </div>
+      <button
+        className="px-3 py-1 bg-gray-800 rounded"
+        onClick={() => onChange("bars")}
+      >
+        Bars
+      </button>
+
+      <button
+        className="px-3 py-1 bg-gray-800 rounded"
+        onClick={() => onChange("line")}
+      >
+        Line
+      </button>
+
+      <button
+        className="px-3 py-1 bg-gray-800 rounded"
+        onClick={() => onChange("dark")}
+      >
+        Dark Mode
+      </button>
+
+      <button
+        className="px-3 py-1 bg-gray-800 rounded"
+        onClick={() => onChange("light")}
+      >
+        Light Mode
+      </button>
     </div>
   );
 }
