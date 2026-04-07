@@ -128,14 +128,17 @@ export default function PriceChart({
         volume: parseFloat(k.v),
       };
 
-      // Update the current candle
-      if (candleSeries.current) {
-        candleSeries.current.update(liveCandle);
-      }
-
-      // Update volume live
-      if (volumeSeries.current) {
-        volumeSeries.current.update({
+      // If candle is still forming → update it
+      if (!k.x) {
+        candleSeries.current?.update(liveCandle);
+        volumeSeries.current?.update({
+          time: liveCandle.time,
+          value: liveCandle.volume,
+        });
+      } else {
+        // Candle closed → append new candle
+        candleSeries.current?.update(liveCandle);
+        volumeSeries.current?.update({
           time: liveCandle.time,
           value: liveCandle.volume,
         });
@@ -151,4 +154,4 @@ export default function PriceChart({
       className="w-full h-[400px] rounded-lg overflow-hidden"
     />
   );
-}
+          }
