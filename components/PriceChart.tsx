@@ -25,7 +25,6 @@ export default function PriceChart({
   const emaSeries = useRef<ISeriesApi<"Line"> | null>(null);
   const volumeSeries = useRef<ISeriesApi<"Histogram"> | null>(null);
 
-  // Store candles in state so indicators can update live
   const [candles, setCandles] = useState<any[]>([]);
 
   useEffect(() => {
@@ -38,6 +37,9 @@ export default function PriceChart({
         grid: {
           vertLines: { color: "#222" },
           horzLines: { color: "#222" },
+        },
+        crosshair: {
+          mode: 1, // TradingView-style crosshair
         },
         width: chartRef.current.clientWidth,
         height: 400,
@@ -121,24 +123,19 @@ export default function PriceChart({
         const lastIndex = updated.length - 1;
 
         if (!k.x) {
-          // Candle still forming → update last candle
           updated[lastIndex] = liveCandle;
         } else {
-          // Candle closed → append new candle
           updated[lastIndex] = liveCandle;
           updated.push(liveCandle);
         }
 
-        // Update chart candles
         candleSeries.current?.update(liveCandle);
 
-        // Update volume
         volumeSeries.current?.update({
           time: liveCandle.time,
           value: liveCandle.volume,
         });
 
-        // Recalculate indicators live
         smaSeries.current?.setData(calculateSMA(updated, 20));
         emaSeries.current?.setData(calculateEMA(updated, 50));
 
@@ -149,10 +146,55 @@ export default function PriceChart({
     return () => ws.close();
   }, [symbol, timeframe]);
 
+  // --- TradingView-style tooltips ---
+  useEffect(() => {
+    if (!chartInstance.current || !candleSeries.current) return;
+
+    const priceTooltip = document.getElementById("price-tooltip");
+    const timeTooltip = document.getElementById("time-tooltip");
+
+    chartInstance.current.subscribeCrosshairMove((param) => {
+      if (!param || !param.time || !param.seriesPrices) {
+        priceTooltip!.style.display = "none";
+        timeTooltip!.style.display = "none";
+        return;
+      }
+
+      const candlePrice = param.seriesPrices.get(candleSeries.current!);
+
+      if (candlePrice) {
+        priceTooltip!.innerText = candlePrice.close.toFixed(2);
+        priceTooltip!.style.display = "block";
+        priceTooltip!.style.top = param.point?.y + "px";
+      }
+
+      const utc = new Date((param.time as number) * 1000);
+      const timeStr = utc.toLocaleString();
+
+      timeTooltip!.innerText = timeStr;
+      timeTooltip!.style.display = "block";
+      timeTooltip!.style.left = param.point?.x + "px";
+    });
+  }, []);
+
   return (
-    <div
-      ref={chartRef}
-      className="w-full h-[400px] rounded-lg overflow-hidden"
-    />
+    <div className="relative w-full h-[400px] rounded-lg overflow-hidden">
+      <div
+        ref={chartRef}
+        className="absolute inset-0"
+      />
+
+      {/* TradingView-style price tooltip */}
+      <div
+        id="price-tooltip"
+        className="absolute right-0 bg-black/80 text-white px-2 py-1 text-sm rounded hidden pointer-events-none"
+      ></div>
+
+      {/* TradingView-style time tooltip */}
+      <div
+        id="time-tooltip"
+        className="absolute bottom-0 bg-black/80 text-white px-2 py-1 text-sm rounded hidden pointer-events-none"
+      ></div>
+    </div>
   );
-            }
+                           }
