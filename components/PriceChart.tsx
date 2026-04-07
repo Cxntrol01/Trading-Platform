@@ -31,7 +31,6 @@ export default function PriceChart({
         chartInstance.current.addCandlestickSeries();
     }
 
-    // Fetch candles when symbol/timeframe changes
     async function load() {
       const data = await fetchCandles(symbol, timeframe);
 
@@ -40,8 +39,19 @@ export default function PriceChart({
       }
     }
 
+    // Load immediately
     load();
+
+    // Auto-refresh every 10 seconds
+    const interval = setInterval(load, 10000);
+
+    return () => clearInterval(interval);
   }, [symbol, timeframe]);
 
-  return <div ref={chartRef} className="w-full h-[400px]" />;
+  return (
+    <div
+      ref={chartRef}
+      className="w-full h-[400px] rounded-lg overflow-hidden"
+    />
+  );
 }
